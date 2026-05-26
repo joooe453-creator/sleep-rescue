@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>睡眠救援大作戰 — AI × SDG 3 健康互動遊戲</title>
+<meta name="description" content="基於 Kaggle 374 筆睡眠資料設計的 7 天決策互動遊戲。模擬大學生作息選擇，看你能不能成為睡眠管理高手。">
+<meta property="og:title" content="睡眠救援大作戰">
+<meta property="og:description" content="7 天決策模擬 × 即時健康指標 × 個人化睡眠建議。AI × SDG 3 健康教育互動 demo。">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#1a1a3e">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%99%3C/text%3E%3C/svg%3E">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
+  background: linear-gradient(135deg, #1a1a3e 0%, #2d1b4e 50%, #1a2a5e 100%);
+  background-attachment: fixed;
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.container {
+  max-width: 820px;
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+h1 {
+  font-size: 30px;
+  text-align: center;
+  margin-bottom: 6px;
+  background: linear-gradient(90deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.subtitle { text-align: center; opacity: 0.65; margin-bottom: 24px; font-size: 13px; }
+.day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.day-title { font-size: 22px; font-weight: 600; }
+.time-info { font-size: 14px; opacity: 0.85; }
+.scenario {
+  background: linear-gradient(90deg, rgba(167,139,250,0.18), rgba(96,165,250,0.12));
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  border-left: 4px solid #a78bfa;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 16px; }
+.stat-card {
+  background: rgba(255,255,255,0.08);
+  padding: 10px 6px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.stat-label { font-size: 10.5px; opacity: 0.75; }
+.stat-value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+.time-bar { background: rgba(255,255,255,0.08); height: 8px; border-radius: 4px; margin-bottom: 16px; overflow: hidden; }
+.time-fill {
+  background: linear-gradient(90deg, #60a5fa, #a78bfa);
+  height: 100%;
+  transition: width 0.4s ease;
+  border-radius: 4px;
+}
+.activities { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.activity {
+  background: rgba(255,255,255,0.08);
+  padding: 14px 8px;
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid rgba(255,255,255,0.05);
+  user-select: none;
+}
+.activity:hover {
+  background: rgba(167,139,250,0.2);
+  transform: translateY(-3px);
+  border-color: rgba(167,139,250,0.5);
+}
+.activity.disabled { opacity: 0.35; cursor: not-allowed; }
+.activity.disabled:hover { transform: none; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.05); }
+.activity-icon { font-size: 28px; margin-bottom: 4px; }
+.activity-name { font-weight: 600; font-size: 13px; }
+.activity-time { font-size: 11px; opacity: 0.65; margin-top: 2px; }
+.timeline {
+  background: rgba(255,255,255,0.04);
+  padding: 12px 14px;
+  border-radius: 12px;
+  min-height: 56px;
+  margin-bottom: 14px;
+}
+.timeline-label { font-size: 12px; opacity: 0.7; margin-bottom: 8px; }
+.timeline-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.timeline-item {
+  background: rgba(167,139,250,0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.timeline-item .remove {
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0 2px;
+}
+.timeline-item .remove:hover { opacity: 1; }
+.empty-timeline { opacity: 0.4; font-size: 13px; font-style: italic; }
+button.primary {
+  background: linear-gradient(90deg, #a78bfa, #60a5fa);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  font-size: 15px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+button.primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(167,139,250,0.4); }
+button.primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.intro { text-align: center; padding: 16px 12px; }
+.intro p { line-height: 1.8; margin: 14px 0; opacity: 0.9; font-size: 15px; }
+.intro .features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 24px 0;
+}
+.feature {
+  background: rgba(255,255,255,0.08);
+  padding: 16px 8px;
+  border-radius: 12px;
+}
+.feature-icon { font-size: 28px; margin-bottom: 6px; }
+.feature-text { font-size: 12px; opacity: 0.85; }
+.report-grade {
+  font-size: 88px;
+  font-weight: 800;
+  margin: 16px 0 8px;
+  background: linear-gradient(90deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+  line-height: 1;
+}
+.report-title { font-size: 17px; opacity: 0.95; text-align: center; margin-bottom: 20px; line-height: 1.5; }
+.report-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
+.report-stat { background: rgba(255,255,255,0.08); padding: 16px; border-radius: 12px; }
+.report-stat-label { opacity: 0.7; font-size: 13px; }
+.report-stat-value { font-size: 26px; font-weight: 700; margin-top: 4px; }
+.advice {
+  background: linear-gradient(135deg, rgba(167,139,250,0.18), rgba(96,165,250,0.12));
+  padding: 20px;
+  border-radius: 14px;
+  margin: 20px 0;
+  border-left: 4px solid #a78bfa;
+}
+.advice h3 { margin-bottom: 12px; font-size: 16px; }
+.advice ul { margin-left: 18px; line-height: 1.9; font-size: 14px; }
+.sleep-chart {
+  background: rgba(255,255,255,0.05);
+  padding: 16px;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+.chart-label { opacity: 0.7; font-size: 13px; margin-bottom: 12px; }
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 140px;
+  padding: 0 10px;
+}
+.bar-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.bar-value-label { font-size: 11px; margin-bottom: 4px; opacity: 0.85; }
+.bar {
+  background: linear-gradient(180deg, #a78bfa, #60a5fa);
+  width: 26px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.5s ease;
+}
+.bar-day-label { font-size: 11px; margin-top: 6px; opacity: 0.7; }
+.tag {
+  display: inline-block;
+  background: rgba(167,139,250,0.25);
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  margin: 4px 4px 0 0;
+}
+.app-footer {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+  font-size: 11px;
+  opacity: 0.55;
+  line-height: 1.6;
+}
+.app-footer a { color: inherit; text-decoration: underline; }
+@media (max-width: 600px) {
+  .container { padding: 20px; }
+  h1 { font-size: 24px; }
+  .stats { grid-template-columns: repeat(3, 1fr); }
+  .report-stats { grid-template-columns: 1fr; }
+  .intro .features { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="app"></div>
+  <div class="app-footer">
+    第 14 組 · 人工智慧方法與工具期末專題 · SDG 3 健康與福祉<br>
+    資料來源：<a href="https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset" target="_blank" rel="noopener">Kaggle Sleep Health and Lifestyle Dataset</a>
+  </div>
+</div>
+
+<script>
+const STATE = {
+  day: 0,
+  sleepHours: [],
+  stress: 50,
+  focus: 50,
+  health: 70,
+  mood: 60,
+  timeUsed: 0,
+  timeBudget: 240,
+  todayActivities: [],
+  hadCoffeeToday: false,
+};
+
+const DAYS = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+
+const SCENARIOS = [
+  '新的一週開始！今天上完課還要趕一份報告，群組訊息響不停。',
+  '明天有期中考！今天決定要硬撐還是規律準備？',
+  '深夜還在跟組員討論作業，已經 23:30 了...',
+  '社團聚會邀請！但明天還要早八。',
+  '週五！身體已經累積一週疲勞，但好像可以撐到週末。',
+  '週末！可以選擇放鬆充電，或是把進度補回來。',
+  '明天又要開始新的一週，今晚怎麼收尾關鍵了。',
+];
+
+const ACTIVITIES = [
+  { id: 'study', icon: '📚', name: '讀書寫作業', time: 60, effects: { sleep: -0.5, focus: 5, stress: 4 } },
+  { id: 'coffee', icon: '☕', name: '喝咖啡', time: 15, effects: { sleep: -1.5, focus: 10, stress: 2 }, once: true },
+  { id: 'exercise', icon: '🏃', name: '運動', time: 45, effects: { sleep: 0.5, health: 8, stress: -8, mood: 5 }, once: true },
+  { id: 'phone', icon: '📱', name: '滑手機', time: 30, effects: { sleep: -0.5, focus: -3, mood: 3 } },
+  { id: 'meditate', icon: '🧘', name: '冥想', time: 15, effects: { sleep: 0.3, stress: -10, focus: 3 } },
+  { id: 'earlysleep', icon: '🛌', name: '提早就寢', time: 60, effects: { sleep: 1.5, health: 5, stress: -5, focus: 5 } },
+  { id: 'social', icon: '🍻', name: '朋友聚餐', time: 90, effects: { sleep: -1, mood: 12, stress: -3 } },
+  { id: 'gaming', icon: '🎮', name: '打電動', time: 60, effects: { sleep: -1, mood: 8, focus: -2 } },
+];
+
+const app = document.getElementById('app');
+
+function clamp(v) { return Math.max(0, Math.min(100, v)); }
+
+function getCurrentSleepHours() {
+  let h = 8;
+  STATE.todayActivities.forEach(a => { h += a.effects.sleep || 0; });
+  return Math.max(3, Math.min(10, h));
+}
+
+function render() {
+  if (STATE.day === 0) renderIntro();
+  else if (STATE.day > 7) renderReport();
+  else renderDay();
+}
+
+function renderIntro() {
+  app.innerHTML = `
+    <h1>🌙 睡眠救援大作戰</h1>
+    <p class="subtitle">SDG 3 健康與福祉 ｜ AI × 睡眠資料分析互動遊戲</p>
+    <div class="intro">
+      <p>你將扮演一位大學生，用 7 天的時間做出影響睡眠的選擇。</p>
+      <p>每個決定都會累積在你的<strong>睡眠、健康、壓力、精神</strong>四項指標上。</p>
+      <p>看看你能不能成為「睡眠管理高手」？</p>
+      <div class="features">
+        <div class="feature"><div class="feature-icon">🎯</div><div class="feature-text">7 天決策模擬</div></div>
+        <div class="feature"><div class="feature-icon">📊</div><div class="feature-text">即時健康指標</div></div>
+        <div class="feature"><div class="feature-icon">💡</div><div class="feature-text">個人化建議</div></div>
+      </div>
+      <button class="primary" onclick="startGame()">開始這一週 🚀</button>
+    </div>
+  `;
+}
+
+function startGame() {
+  STATE.day = 1;
+  STATE.sleepHours = [];
+  STATE.stress = 50;
+  STATE.focus = 50;
+  STATE.health = 70;
+  STATE.mood = 60;
+  newDay();
+  render();
+}
+
+function newDay() {
+  STATE.timeUsed = 0;
+  STATE.todayActivities = [];
+  STATE.hadCoffeeToday = false;
+}
+
+function renderDay() {
+  const i = STATE.day - 1;
+  const sleepPreview = getCurrentSleepHours();
+  const sleepTag = sleepPreview >= 7 ? '✅ 充足' : sleepPreview >= 6 ? '⚠️ 偏少' : '🚨 嚴重不足';
+  app.innerHTML = `
+    <h1>🌙 睡眠救援大作戰</h1>
+    <div class="day-header">
+      <span class="day-title">${DAYS[i]} · 第 ${STATE.day} / 7 天</span>
+      <span class="time-info">⏱️ ${STATE.timeUsed} / ${STATE.timeBudget} 分</span>
+    </div>
+    <div class="scenario">📖 ${SCENARIOS[i]}</div>
+    <div class="time-bar"><div class="time-fill" style="width: ${(STATE.timeUsed/STATE.timeBudget)*100}%"></div></div>
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">😴 預估睡眠</div>
+        <div class="stat-value" style="font-size:17px;">${sleepPreview.toFixed(1)}h</div>
+        <div style="font-size:10px;opacity:0.7;margin-top:2px;">${sleepTag}</div>
+      </div>
+      <div class="stat-card"><div class="stat-label">⚡ 精神</div><div class="stat-value">${Math.round(STATE.focus)}</div></div>
+      <div class="stat-card"><div class="stat-label">😰 壓力</div><div class="stat-value">${Math.round(STATE.stress)}</div></div>
+      <div class="stat-card"><div class="stat-label">❤️ 健康</div><div class="stat-value">${Math.round(STATE.health)}</div></div>
+      <div class="stat-card"><div class="stat-label">😊 心情</div><div class="stat-value">${Math.round(STATE.mood)}</div></div>
+    </div>
+    <div class="activities">
+      ${ACTIVITIES.map(a => {
+        let disabled = STATE.timeUsed + a.time > STATE.timeBudget;
+        if (a.once && a.id === 'coffee' && STATE.hadCoffeeToday) disabled = true;
+        if (a.once && a.id === 'exercise' && STATE.todayActivities.some(x => x.id === 'exercise')) disabled = true;
+        return `<div class="activity ${disabled?'disabled':''}" onclick="${disabled?'':`addActivity('${a.id}')`}">
+          <div class="activity-icon">${a.icon}</div>
+          <div class="activity-name">${a.name}</div>
+          <div class="activity-time">${a.time} 分</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="timeline">
+      <div class="timeline-label">📋 今天已安排</div>
+      <div class="timeline-items">
+        ${STATE.todayActivities.length === 0
+          ? '<span class="empty-timeline">還沒安排任何活動，點上方卡片來加入</span>'
+          : STATE.todayActivities.map((a, idx) =>
+              `<span class="timeline-item">${a.icon} ${a.name} <span class="remove" onclick="removeActivity(${idx})">✕</span></span>`
+            ).join('')
+        }
+      </div>
+    </div>
+    <button class="primary" onclick="endDay()">😴 結束今天，進入睡眠</button>
+  `;
+}
+
+function addActivity(id) {
+  const a = ACTIVITIES.find(x => x.id === id);
+  if (!a) return;
+  if (STATE.timeUsed + a.time > STATE.timeBudget) return;
+  if (a.once && a.id === 'coffee' && STATE.hadCoffeeToday) return;
+  if (a.once && a.id === 'exercise' && STATE.todayActivities.some(x => x.id === 'exercise')) return;
+  if (a.id === 'coffee') STATE.hadCoffeeToday = true;
+  STATE.todayActivities.push(a);
+  STATE.timeUsed += a.time;
+  render();
+}
+
+function removeActivity(idx) {
+  const a = STATE.todayActivities[idx];
+  STATE.timeUsed -= a.time;
+  if (a.id === 'coffee') STATE.hadCoffeeToday = false;
+  STATE.todayActivities.splice(idx, 1);
+  render();
+}
+
+function endDay() {
+  const h = getCurrentSleepHours();
+  STATE.sleepHours.push(h);
+  STATE.todayActivities.forEach(a => {
+    if (a.effects.focus) STATE.focus = clamp(STATE.focus + a.effects.focus);
+    if (a.effects.stress) STATE.stress = clamp(STATE.stress + a.effects.stress);
+    if (a.effects.health) STATE.health = clamp(STATE.health + a.effects.health);
+    if (a.effects.mood) STATE.mood = clamp(STATE.mood + a.effects.mood);
+  });
+  if (h >= 7) {
+    STATE.focus = clamp(STATE.focus + 6);
+    STATE.stress = clamp(STATE.stress - 6);
+    STATE.health = clamp(STATE.health + 3);
+  } else if (h < 6) {
+    STATE.focus = clamp(STATE.focus - 8);
+    STATE.stress = clamp(STATE.stress + 6);
+    STATE.health = clamp(STATE.health - 4);
+  }
+  STATE.day++;
+  newDay();
+  render();
+}
+
+function renderReport() {
+  const avgSleep = (STATE.sleepHours.reduce((a,b)=>a+b,0) / 7).toFixed(1);
+  const grade = getGrade(parseFloat(avgSleep), STATE.health, STATE.stress);
+  const advice = getAdvice(parseFloat(avgSleep), STATE.stress, STATE.health, STATE.focus);
+  app.innerHTML = `
+    <h1>🌟 一週睡眠成績單</h1>
+    <p class="subtitle">SDG 3 健康與福祉 ｜ 你的 7 天決策成果</p>
+    <div class="report-grade">${grade.letter}</div>
+    <div class="report-title">${grade.title}</div>
+    <div class="report-stats">
+      <div class="report-stat"><div class="report-stat-label">😴 平均睡眠</div><div class="report-stat-value">${avgSleep} 小時</div></div>
+      <div class="report-stat"><div class="report-stat-label">❤️ 健康指數</div><div class="report-stat-value">${Math.round(STATE.health)}</div></div>
+      <div class="report-stat"><div class="report-stat-label">😰 壓力指數</div><div class="report-stat-value">${Math.round(STATE.stress)}</div></div>
+      <div class="report-stat"><div class="report-stat-label">⚡ 精神指數</div><div class="report-stat-value">${Math.round(STATE.focus)}</div></div>
+      <div class="report-stat"><div class="report-stat-label">😊 心情指數</div><div class="report-stat-value">${Math.round(STATE.mood)}</div></div>
+    </div>
+    <div class="sleep-chart">
+      <div class="chart-label">📊 一週每日睡眠時數</div>
+      <div class="bar-chart">
+        ${STATE.sleepHours.map((h, i) => `
+          <div class="bar-column">
+            <div class="bar-value-label">${h.toFixed(1)}h</div>
+            <div class="bar" style="height: ${(h/10)*120}px;"></div>
+            <div class="bar-day-label">${DAYS[i].slice(1)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="advice">
+      <h3>💡 給你的個人化建議</h3>
+      <ul>${advice.map(a => `<li>${a}</li>`).join('')}</ul>
+    </div>
+    <button class="primary" onclick="STATE.day=0;render();">再玩一次 🔄</button>
+  `;
+}
+
+function getGrade(sleep, health, stress) {
+  const score = sleep * 5 + health * 0.3 - stress * 0.2;
+  if (score >= 48) return { letter: 'A', title: '睡眠管理大師！你的健康習慣值得推廣 🌟' };
+  if (score >= 38) return { letter: 'B', title: '不錯！你的睡眠習慣已經比平均同齡人好 👍' };
+  if (score >= 28) return { letter: 'C', title: '注意！你的睡眠正在累積健康負債 ⚠️' };
+  return { letter: 'D', title: '危險！睡眠剝奪已影響你的健康，請立即調整 🚨' };
+}
+
+function getAdvice(sleep, stress, health, focus) {
+  const tips = [];
+  if (sleep < 6.5) tips.push('🛌 平均睡眠不足，建議固定每晚 23 點前就寢（成人最佳睡眠 7-9 小時）');
+  else if (sleep >= 7.5) tips.push('🌟 平均睡眠充足，你已掌握最關鍵的健康基礎');
+  if (stress > 70) tips.push('🧘 壓力過高，每天 10 分鐘冥想可降低約 30% 失眠機率（JAMA 2015 研究）');
+  else if (stress < 40) tips.push('😌 壓力控制得很好，這是維持高品質睡眠的關鍵');
+  if (health < 50) tips.push('🏃 健康指數偏低，每週 5 天運動可顯著提升睡眠品質與整體健康');
+  if (focus < 40) tips.push('⚡ 精神指數偏低，可能與睡眠負債或咖啡因依賴有關');
+  if (sleep >= 7 && stress < 40 && health >= 70) tips.push('🎯 你已掌握「睡眠 + 紓壓 + 健康」黃金三角，繼續保持！');
+  if (tips.length === 0) tips.push('👍 整體表現平衡，可嘗試加入冥想或規律運動更進一步');
+  tips.push('📚 想了解更多？查詢「睡眠衛生 12 守則」或諮詢學校健康中心');
+  tips.push('🎓 本遊戲基於 Kaggle Sleep Health and Lifestyle Dataset 374 筆資料分析設計');
+  return tips;
+}
+
+render();
+</script>
+</body>
+</html>
